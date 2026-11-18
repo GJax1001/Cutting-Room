@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cutting Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --petrol:#0e2c36; --deep:#0a212a; --panel:#163f4b; --line:#2c5c69;
+  --paper:#eaf4ec; --muted:#a9c6c4; --butter:#f6d55c; --pink:#ff9db0;
+  --display:"Bricolage Grotesque","Arial Narrow",sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--petrol);-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;color:var(--paper);font:400 17px/1.5 var(--body)}
+main{width:min(100%,760px);margin:0 auto;padding:20px 18px 64px}
+h1,h2,h3,p{margin:0}
+h1,h2{font-family:var(--display);font-stretch:75%;font-weight:800;line-height:.98;letter-spacing:-.01em}
+h1{font-size:clamp(68px,21vw,136px)}
+h2{font-size:clamp(38px,10vw,60px)}
+a{color:var(--butter)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+:focus-visible{outline:3px solid var(--butter);outline-offset:2px}
+.muted{color:var(--muted)}
+.small{font-size:15px}
+.stack>*+*{margin-top:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:10px 20px;border-radius:4px;font-weight:700;text-decoration:none}
+.btn.main{background:var(--butter);color:var(--deep)}
+.btn.alt{box-shadow:inset 0 0 0 2px var(--line);color:var(--paper)}
+.btn.cut{background:var(--pink);color:var(--deep)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.wide{width:100%}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.link{color:var(--muted);text-decoration:underline;min-height:40px;font-size:15px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:40px;margin-bottom:18px}
+.brand{font:800 21px/1 var(--display);font-stretch:75%;color:var(--paper)}
+.note{border-left:4px solid var(--butter);padding:4px 0 4px 14px}
+.err{border-left-color:var(--pink)}
+
+/* The strip: a length of tape standing in for the playlist */
+.strip{position:relative;height:46px;background:var(--deep);border-radius:2px;overflow:hidden;
+  background-image:radial-gradient(circle at center,var(--petrol) 2.5px,transparent 3px);background-size:14px 8px;background-repeat:repeat-x;background-position:0 1px}
+.strip i{position:absolute;display:block}
+.strip .kept{left:0;top:9px;bottom:9px;background:var(--paper)}
+.strip .win{top:9px;bottom:9px;background:var(--butter);min-width:3px}
+.strip .mark{top:0;bottom:0;width:3px;background:var(--pink)}
+.home-strip{margin:18px 0 22px}
+
+/* Home */
+.resume{display:block;width:100%;text-align:left;background:var(--panel);padding:16px;border-radius:4px}
+.resume b{display:block;font-size:19px}
+
+/* Lists of playlists */
+.plist{list-style:none;margin:0;padding:0}
+.plist li+li{border-top:1px solid var(--line)}
+.plist button{display:flex;gap:12px;width:100%;text-align:left;padding:12px 0;align-items:center;min-height:68px}
+.plist button[disabled]{opacity:.5;cursor:not-allowed}
+.plist b{display:block;line-height:1.25;overflow-wrap:anywhere}
+.art{flex:none;width:48px;height:48px;object-fit:cover;background:var(--panel);border-radius:2px}
+
+/* Forms */
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label b{display:block;margin-bottom:5px}
+input{width:100%;min-height:54px;padding:8px 12px;background:var(--deep);border:2px solid var(--line);border-radius:4px;font-size:22px;font-weight:700}
+input.text{font-size:16px;font-weight:400}
+ol.steps{margin:0;padding-left:24px}
+ol.steps li+li{margin-top:14px}
+code{display:block;margin:6px 0;padding:9px 11px;background:var(--deep);border-radius:4px;font-size:14px;overflow-wrap:anywhere}
+
+/* Match */
+.mhead{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:8px}
+.mhead b{font:800 25px/1 var(--display);font-stretch:75%}
+.bar{height:6px;background:var(--deep);margin-bottom:16px}
+.bar i{display:block;height:100%;background:var(--butter)}
+.duel{display:grid;gap:0}
+.song{position:relative;background:var(--panel);min-width:0;--art:clamp(104px,30vw,150px);--spot:calc(12px + var(--art) / 2 - 27px)}
+.play{position:absolute;left:var(--spot);top:var(--spot);width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:var(--butter);color:var(--deep);box-shadow:0 0 0 4px var(--deep)}
+.play[disabled]{background:var(--panel);color:var(--muted);cursor:not-allowed}
+.play.on{background:var(--paper)}
+.song.won .play{box-shadow:0 0 0 4px var(--butter)}
+.pick{--art:clamp(104px,30vw,150px);display:grid;grid-template-columns:var(--art) 1fr;gap:14px;width:100%;text-align:left;padding:12px;align-items:start;min-height:128px}
+.pick img,.pick .fake{width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:2px}
+.pick strong{display:block;font:800 clamp(26px,7vw,36px)/1.02 var(--display);font-stretch:75%;overflow-wrap:anywhere}
+.pick span.by{display:block;margin-top:6px;color:var(--muted);line-height:1.3;overflow-wrap:anywhere}
+.song.won{background:var(--butter);color:var(--deep)}
+.song.won .by{color:var(--deep)}
+.song.lost{opacity:.35}
+.tools{display:flex;gap:18px;padding:0 12px 8px}
+.tools .link,.tools a{display:inline-flex;align-items:center;min-height:40px;color:var(--muted);font-size:15px}
+#dock{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--deep);border-top:3px solid var(--butter);padding:8px max(10px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-bottom))}
+#dock[hidden]{display:none}
+#dock>div{width:min(100%,724px);margin:0 auto}
+#dock iframe{display:block;width:100%;height:80px;border:0;border-radius:8px}
+#dockmsg{font-size:15px;padding:6px 2px}
+#dockmsg:empty{display:none}
+body.docked main{padding-bottom:130px}
+.splice{height:22px;background:repeating-linear-gradient(115deg,var(--butter) 0 7px,var(--deep) 7px 14px)}
+.mfoot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;margin-top:12px}
+
+/* Results */
+.counts{display:flex;gap:26px;margin:16px 0 10px}
+.counts b{display:block;font:800 clamp(44px,13vw,68px)/1 var(--display);font-stretch:75%}
+.counts .c b{color:var(--pink)}
+.tabs{display:flex;gap:4px;margin:24px 0 4px;border-bottom:2px solid var(--line)}
+.tabs button{min-height:46px;padding:0 14px;color:var(--muted);font-weight:700;margin-bottom:-2px;border-bottom:3px solid transparent}
+.tabs button[aria-selected=true]{color:var(--paper);border-bottom-color:var(--butter)}
+.ghead{margin-top:20px;padding-bottom:4px;font-weight:700;color:var(--butter)}
+.cullzone .ghead{color:var(--pink)}
+.tr{display:grid;grid-template-columns:34px 42px 1fr;gap:10px;align-items:center;padding:6px 0;content-visibility:auto;contain-intrinsic-size:auto 54px}
+.tr .n{color:var(--muted);font-size:14px;text-align:right}
+.tr img,.tr .fake{width:42px;height:42px;object-fit:cover;border-radius:2px;display:block}
+.tr b{display:block;line-height:1.2;overflow-wrap:anywhere;font-size:16px}
+.tr a,.tr span.by{color:var(--muted);font-size:14px;line-height:1.25;display:block;overflow-wrap:anywhere}
+.cutline{display:flex;align-items:center;gap:10px;margin:26px 0 6px;color:var(--pink);font-weight:700}
+.cutline::after{content:"";flex:1;border-top:3px dashed var(--pink)}
+.cutline svg{flex:none}
+@media (min-width:700px){
+  main{padding-top:32px}
+  .duel{grid-template-columns:1fr 22px 1fr}
+  .splice{height:auto}
+  .pick{grid-template-columns:1fr}
+  .song{container-type:inline-size;--spot:0px}
+  .play{left:calc(50cqw - 27px);top:calc(50cqw - 27px)}
+}
+@media (prefers-reduced-motion:no-preference){
+  .song{transition:background-color .12s,opacity .12s}
+}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<div id="dock" hidden><div><div id="dockhost"></div><p id="dockmsg" role="status"></p></div></div>
+<script>
+"use strict";
+/* ---------- Tournament and culling rules (no page or network access) ---------- */
+function mulberry(seed){return function(){seed=(seed+0x6D2B79F5)|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffled(list,rng){const a=list.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+/* Replays a tournament from its seed and picks. Every win is one point.
+   An odd song out moves on with no point, so a free pass never raises a score. */
+function runBracket(pool,seed,picks){
+  const rng=mulberry(seed),pts={},byes={};
+  pool.forEach(k=>{pts[k]=0;byes[k]=0});
+  let alive=pool.slice(),n=0;
+  const total=pool.length-1;
+  while(alive.length>1){
+    const size=alive.length,order=shuffled(alive,rng),next=[];
+    if(order.length%2){
+      const fewest=Math.min(...order.map(k=>byes[k]));
+      const options=order.filter(k=>byes[k]===fewest);
+      const bye=options[Math.floor(rng()*options.length)];
+      order.splice(order.indexOf(bye),1);byes[bye]++;next.push(bye);
+    }
+    for(let i=0;i<order.length;i+=2){
+      const a=order[i],b=order[i+1];
+      if(n>=picks.length)return{done:false,a,b,alive:size,number:n+1,total,pts};
+      const w=picks[n++]?b:a;pts[w]++;next.push(w);
+    }
+    alive=next;
+  }
+  return{done:true,pts,total,champion:alive[0]};
+}
+
+/* Moves whole point levels into the cull box, lowest first. Songs on the same
+   score always move together, so title and playlist position play no part. */
+function selectCull(pool,pts,safeCount,goal,range){
+  let remaining=safeCount+pool.length;
+  const cull=[];
+  if(remaining<=goal+range)return{status:"ok",cull,remaining,lastLevel:[]};
+  const levels=[...new Set(pool.map(k=>pts[k]))].sort((a,b)=>a-b);
+  let lastLevel=[];
+  for(const level of levels){
+    lastLevel=pool.filter(k=>pts[k]===level);
+    cull.push(...lastLevel);remaining-=lastLevel.length;
+    if(remaining>goal+range)continue;
+    return{status:remaining>=goal?"ok":"under",cull,remaining,lastLevel};
+  }
+  return{status:"under",cull,remaining,lastLevel};
+}
+function samePool(a,b){if(a.length!==b.length)return false;const s=new Set(a);return b.every(k=>s.has(k))}
+
+/* Walks every tournament played so far and reports where the session stands. */
+function evaluate(s){
+  let pool=Object.keys(s.songs),safe=0;
+  const keep=[],locked=[];
+  for(let i=0;;i++){
+    const r=s.rounds[i],b=runBracket(r.pool,r.seed,r.picks);
+    if(!b.done)return{status:"playing",round:i,bracket:b,keep,locked,cull:[],remaining:safe};
+    const sel=selectCull(pool,b.pts,safe,s.goal,s.range),out=new Set(sel.cull);
+    pool.filter(k=>!out.has(k)).forEach(k=>keep.push({key:k,pts:b.pts[k],round:i}));
+    safe=sel.remaining;
+    const row=k=>({key:k,pts:b.pts[k],round:i});
+    if(sel.status==="ok")return{status:"done",round:i,keep,locked,cull:sel.cull.map(row),remaining:safe};
+    /* Everything tied at the top: lower scores stay cut and only the tie is replayed. */
+    let nextPool=sel.cull;
+    if(sel.cull.length===pool.length){
+      const tie=new Set(sel.lastLevel);
+      sel.cull.filter(k=>!tie.has(k)).forEach(k=>locked.push(row(k)));
+      nextPool=sel.lastLevel;
+    }
+    const next=s.rounds[i+1];
+    if(next&&samePool(next.pool,nextPool)){pool=nextPool;continue}
+    return{status:"under",round:i,keep,locked,cull:nextPool.map(row),nextPool,remaining:safe,short:s.goal-safe};
+  }
+}
+function startRematch(s,ev,seed){s.rounds.length=ev.round+1;s.rounds.push({pool:ev.nextPool.slice(),seed,picks:[]})}
+function newSeed(){return Math.floor(Math.random()*2147483647)}
+function makeSession(playlist,tracks,goal,range){
+  const songs={};tracks.forEach((t,i)=>{songs["s"+i]=t});
+  return{playlist,songs,goal,range,demo:!!playlist.demo,rounds:[{pool:Object.keys(songs),seed:newSeed(),picks:[]}]};
+}
+/* ---------- end of rules ---------- */
+
+/* Storage that keeps working in browsers that refuse it */
+const memory={};let saveFailed=false;
+const store={
+  get(k){try{const v=localStorage.getItem("cr."+k);return v===null?(memory[k]??null):v}catch(e){return memory[k]??null}},
+  set(k,v){memory[k]=v;try{localStorage.setItem("cr."+k,v);return true}catch(e){return false}},
+  del(k){delete memory[k];try{localStorage.removeItem("cr."+k)}catch(e){}}
+};
+function saveSongs(s){saveFailed=!store.set("songs",JSON.stringify(s.songs))}
+function saveProgress(s){const{songs,...rest}=s;saveFailed=!store.set("session",JSON.stringify(rest))||saveFailed}
+function loadSession(){
+  try{const a=JSON.parse(store.get("session")),b=JSON.parse(store.get("songs"));return a&&b?{...a,songs:b}:null}catch(e){return null}
+}
+function clearSession(){store.del("session");store.del("songs")}
+
+/* Spotify: read-only permissions, and only GET requests are ever sent to the API */
+const SCOPES="playlist-read-private playlist-read-collaborative";
+const API="https://api.spotify.com/v1";
+const AUTH="https://accounts.spotify.com";
+const redirectUri=()=>location.origin+location.pathname;
+const embedded=()=>{try{return window.top!==window.self}catch(e){return true}};
+const canConnect=()=>!embedded()&&location.protocol!=="file:"&&!!(window.crypto&&crypto.subtle);
+function randomText(n){const c="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";return Array.from(crypto.getRandomValues(new Uint8Array(n)),x=>c[x%c.length]).join("")}
+async function login(){
+  const clientId=store.get("client"),verifier=randomText(64),state=randomText(20);
+  store.set("verifier",verifier);store.set("state",state);
+  const hash=new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier)));
+  const challenge=btoa(String.fromCharCode(...hash)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  location.href=AUTH+"/authorize?"+new URLSearchParams({client_id:clientId,response_type:"code",redirect_uri:redirectUri(),scope:SCOPES,state,code_challenge_method:"S256",code_challenge:challenge});
+}
+async function tokenRequest(body){
+  const r=await fetch(AUTH+"/api/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({client_id:store.get("client"),...body})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error_description||"Spotify refused the sign-in.");
+  store.set("token",d.access_token);store.set("expires",String(Date.now()+d.expires_in*1000-30000));
+  if(d.refresh_token)store.set("refresh",d.refresh_token);
+}
+async function finishLogin(){
+  const q=new URLSearchParams(location.search);
+  if(!q.has("code")&&!q.has("error"))return;
+  history.replaceState(null,"",location.pathname);
+  if(q.get("error"))throw new Error(q.get("error")==="access_denied"?"Spotify access was declined.":"Spotify sign-in failed: "+q.get("error"));
+  if(q.get("state")!==store.get("state"))throw new Error("The sign-in link didn't match this browser. Connect again.");
+  await tokenRequest({grant_type:"authorization_code",code:q.get("code"),redirect_uri:redirectUri(),code_verifier:store.get("verifier")});
+  store.del("verifier");store.del("state");
+}
+function signedIn(){return !!(store.get("token")||store.get("refresh"))}
+function signOut(){["token","refresh","expires"].forEach(k=>store.del(k))}
+async function freshToken(force){
+  if(force||!store.get("token")||Date.now()>Number(store.get("expires")||0)){
+    if(!store.get("refresh"))throw new Error("Connect Spotify again to continue.");
+    await tokenRequest({grant_type:"refresh_token",refresh_token:store.get("refresh")});
+  }
+  return store.get("token");
+}
+async function get(url,attempt=0){
+  const full=url.startsWith(API)?url:API+url;
+  const r=await fetch(full,{headers:{Authorization:"Bearer "+await freshToken(attempt===1)}});
+  if(r.status===401&&attempt===0)return get(url,1);
+  if(r.status===429&&attempt<6){await new Promise(f=>setTimeout(f,(Number(r.headers.get("Retry-After"))||2)*1000));return get(url,attempt+2)}
+  if(r.status===403)throw new Error("Spotify blocked this request. Check that this account owns the app in your Spotify developer dashboard, or is on its user list, and that the owner has Premium.");
+  if(!r.ok)throw new Error("Spotify returned an error ("+r.status+"). Try again.");
+  return r.json();
+}
+async function allPages(url,onPage){
+  const out=[];let next=url;
+  while(next){const d=await get(next);out.push(...(d.items||[]));if(onPage)onPage(out.length,d.total);next=d.next}
+  return out;
+}
+function parseEntry(e){
+  const t=e&&(e.item||e.track);if(!t||!t.name)return null;
+  const images=(t.album&&t.album.images)||t.images||[];
+  const by=(t.artists||[]).map(a=>a.name).filter(Boolean).join(", ")||(t.show&&t.show.name)||"Unknown artist";
+  const local=!!(t.is_local||e.is_local);
+  return{n:t.name,a:by,img:(images[1]||images[0]||{}).url||"",url:(t.external_urls&&t.external_urls.spotify)||"",id:!local&&t.type!=="episode"?t.id||"":"",u:!local&&t.uri&&!t.uri.startsWith("spotify:local")?t.uri:""};
+}
+
+/* One shared Spotify player, docked to the bottom of the screen */
+const ICON={play:'<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>',
+  pause:'<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4.5v16H6zM13.5 4H18v16h-4.5z"/></svg>'};
+const player={ctl:null,key:null,paused:true,api:null,fallback:false};
+const uriOf=o=>o.u||(o.id?"spotify:track:"+o.id:"");
+const dock=()=>document.getElementById("dock");
+function showDock(on){dock().hidden=!on;document.body.classList.toggle("docked",on)}
+function dockMessage(text){document.getElementById("dockmsg").textContent=text}
+function syncPlayButtons(){
+  document.querySelectorAll(".play:not([disabled])").forEach(b=>{
+    const on=b.dataset.key===player.key&&!player.paused;
+    b.classList.toggle("on",on);b.innerHTML=on?ICON.pause:ICON.play;
+    b.setAttribute("aria-label",(on?"Pause ":"Play ")+b.dataset.name);
+  });
+}
+function loadPlayerApi(){
+  if(!player.api)player.api=new Promise((ok,no)=>{
+    window.onSpotifyIframeApiReady=ok;
+    const s=document.createElement("script");s.src="https://open.spotify.com/embed/iframe-api/v1";s.async=true;s.onerror=no;
+    document.body.append(s);setTimeout(()=>no(new Error("timeout")),8000);
+  });
+  return player.api;
+}
+function plainEmbed(uri){
+  const [,type,id]=uri.split(":"),host=document.getElementById("dockhost");
+  host.innerHTML=`<iframe title="Spotify player" allow="autoplay; encrypted-media" src="https://open.spotify.com/embed/${encodeURIComponent(type)}/${encodeURIComponent(id)}?theme=0"></iframe>`;
+  player.fallback=true;
+}
+async function togglePlay(key){
+  const s=ui.session,song=s.songs[key];dockMessage("");
+  if(s.demo&&!uriOf(song)){showDock(true);dockMessage("Sample songs have no audio. Songs from your Spotify playlists will play here.");return}
+  if(player.key===key&&player.ctl){player.ctl.togglePlay();return}
+  if(player.key===key&&player.fallback)return;
+  player.key=key;player.paused=false;syncPlayButtons();showDock(true);
+  const uri=uriOf(song);
+  if(player.fallback)return plainEmbed(uri);
+  try{
+    const api=await loadPlayerApi();
+    if(player.key!==key)return;
+    if(player.ctl){player.ctl.loadUri(uri);player.ctl.play();return}
+    const slot=document.createElement("div"),host=document.getElementById("dockhost");host.replaceChildren(slot);
+    api.createController(slot,{uri,width:"100%",height:80},c=>{
+      player.ctl=c;
+      c.addListener("ready",()=>c.play());
+      c.addListener("playback_update",e=>{player.paused=e.data.isPaused;syncPlayButtons()});
+    });
+  }catch(e){if(player.key===key)plainEmbed(uri)}
+}
+function stopPlayer(){
+  if(player.ctl&&player.key)player.ctl.pause();
+  if(player.fallback)document.getElementById("dockhost").replaceChildren();
+  player.key=null;player.paused=true;dockMessage("");showDock(false);
+}
+
+/* Sample playlist with invented songs */
+function demoTracks(){
+  const a=["Paper","Glass","Slow","Neon","Quiet","Borrowed","Salt","Winter","Second","Velvet","Static","Lantern"];
+  const b=["Harbor","Telephone","Orchard","Weather","Parade","Motel","Comet","Ladder"];
+  const c=["The Night Ferries","Oda Marsh","Lowlight Club","Tin Sisters","June Calloway","Field Recording"];
+  return Array.from({length:24},(_,i)=>({n:a[i%12]+" "+b[(i*3+1)%8],a:c[i%6],img:"",url:"",id:""}));
+}
+
+/* Page */
+const app=document.getElementById("app");
+const ui={view:"home",session:null,error:"",tab:"all",playlists:[],me:null,loading:"",draft:null,busy:false,pair:[]};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const plural=(n,w)=>n.toLocaleString()+" "+w+(n===1?"":"s");
+function hue(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h}
+function art(song){
+  if(song.img)return `<img src="${esc(song.img)}" alt="">`;
+  const h=hue(song.n);
+  return `<div class="fake" style="background:linear-gradient(135deg,hsl(${h} 55% 62%),hsl(${(h+70)%360} 45% 30%))"></div>`;
+}
+function strip(total,goal,range,kept){
+  const p=v=>Math.min(100,v/total*100);
+  return `<div class="strip" role="img" aria-label="${kept} of ${total} songs kept. Target ${goal} to ${goal+range}.">
+    <i class="kept" style="width:${p(kept)}%"></i><i class="win" style="left:${p(goal)}%;width:${p(range)}%"></i><i class="mark" style="left:calc(${p(kept)}% - 1px)"></i></div>`;
+}
+const header=(right="")=>`<div class="top"><button class="brand" data-act="home">Cutting Room</button>${right}</div>`;
+const errorBox=()=>ui.error?`<p class="note err" role="alert">${esc(ui.error)}</p>`:"";
+
+const views={
+  home(){
+    const saved=ui.session||loadSession();ui.session=saved;
+    let resume="";
+    if(saved){const ev=evaluate(saved);
+      resume=`<button class="resume" data-act="resume"><b>Continue ${esc(saved.playlist.name)}</b><span class="muted small">${ev.status==="playing"?`${ev.bracket.number-1} of ${ev.bracket.total} picks made`:"Results are ready"}</span></button>`}
+    const connect=canConnect()
+      ?`<button class="btn main" data-act="connect">Connect Spotify</button>`
+      :`<p class="note small">Spotify sign-in needs this app at its own web address. This copy can run the sample playlist.</p>`;
+    return `<div class="stack"><h1>Cutting Room</h1><div class="strip home-strip" aria-hidden="true"><i class="kept" style="width:68%"></i><i class="win" style="left:68%;width:7%"></i><i class="mark" style="left:68%"></i></div>
+      <p>Pick winners head to head, then see which songs fall below the line. Your Spotify playlists are never changed.</p>
+      ${errorBox()}${resume}<div class="row">${connect}<button class="btn alt" data-act="demo">Try a sample playlist</button></div></div>`;
+  },
+  setup(){
+    return header()+`<div class="stack"><h2>Connect your Spotify app</h2>
+      <p class="muted">Spotify asks each person running a private app like this to register it once. The account that owns it needs Premium.</p>
+      <ol class="steps"><li>Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify developer dashboard</a> and create an app. Select Web API when asked.</li>
+      <li>Add this exact redirect URI:<code>${esc(redirectUri())}</code><button class="link" data-act="copy-uri">Copy redirect URI</button></li>
+      <li>Paste the app's Client ID here:</li></ol>
+      <label><span class="muted small">Client ID</span><input class="text" id="client" autocomplete="off" spellcheck="false" value="${esc(store.get("client")||"")}"></label>
+      ${errorBox()}<button class="btn main wide" data-act="save-client">Continue to Spotify</button></div>`;
+  },
+  playlists(){
+    const signout=`<button class="link" data-act="signout">Sign out</button>`;
+    if(ui.loading)return header(signout)+`<p>${esc(ui.loading)}</p>`;
+    const rows=ui.playlists.map((p,i)=>`<li><button data-act="choose" data-i="${i}" ${p.readable?"":"disabled"}>
+      ${p.img?`<img class="art" src="${esc(p.img)}" alt="">`:`<span class="art"></span>`}
+      <span><b>${esc(p.name)}</b><span class="muted small">${p.readable?plural(p.total,"song"):"Spotify only shares songs from playlists you own or collaborate on"}</span></span></button></li>`).join("");
+    return header(signout)+`<div class="stack"><h2>Choose a playlist</h2>${errorBox()}
+      ${ui.playlists.length?`<ul class="plist">${rows}</ul>`:(ui.error?`<button class="btn alt" data-act="load-playlists">Try again</button>`:`<p class="muted">No playlists were found on this account.</p>`)}</div>`;
+  },
+  configure(){
+    const d=ui.draft;
+    return header(`<button class="link" data-act="${d.playlist.demo?"home":"back-list"}">Back</button>`)+`<div class="stack"><div><h2>${esc(d.playlist.name)}</h2><p class="muted">${plural(d.tracks.length,"song")}</p></div>
+      <div class="fields"><label><b>Cull to</b><input id="goal" inputmode="numeric" value="${d.goal}"></label>
+      <label><b>Range</b><input id="range" inputmode="numeric" value="${d.range}"></label></div>
+      <p id="plan" class="note"></p>${errorBox()}
+      <button class="btn main wide" id="start" data-act="start">Start tournament</button></div>`;
+  },
+  match(){
+    const s=ui.session,ev=evaluate(s),b=ev.bracket,re=ev.round;
+    const stage=b.alive===2?"Final":b.alive<=4?"Semifinals":b.alive<=8?"Quarterfinals":"Round of "+b.alive;
+    ui.pair=[b.a,b.b];
+    const card=(k,side)=>{const o=s.songs[k],can=!!uriOf(o)||s.demo;
+      return `<article class="song" id="side${side}"><button class="pick" data-act="pick" data-side="${side}" aria-label="Pick ${esc(o.n)} by ${esc(o.a)}">${art(o)}<span><strong>${esc(o.n)}</strong><span class="by">${esc(o.a)}</span></span></button>
+      <button class="play" data-act="play" data-key="${k}" data-name="${esc(o.n)}" ${can?"":`disabled aria-label="${esc(o.n)} is a local file and can't be played here"`}>${can?"":ICON.play}</button>
+      ${o.url?`<div class="tools"><a href="${esc(o.url)}" target="_blank" rel="noopener">Open in Spotify</a></div>`:""}</article>`};
+    return header(`<button class="link" data-act="home">Save and exit</button>`)+`
+      <div class="mhead"><b>${re?`Rematch ${re}: `:""}${stage}</b><span class="muted small">${b.number} of ${b.total}</span></div>
+      <div class="bar"><i style="width:${(b.number-1)/b.total*100}%"></i></div>
+      <div class="duel">${card(b.a,0)}<div class="splice" aria-hidden="true"></div>${card(b.b,1)}</div>
+      <div class="mfoot"><button class="link" data-act="undo" ${s.rounds[re].picks.length?"":"disabled"}>Undo last pick</button>
+      ${s.demo?`<button class="link" data-act="auto">Pick the rest at random</button>`:""}</div>
+      ${saveFailed?`<p class="note err small">This browser isn't saving progress. Keep this page open until you finish.</p>`:""}`;
+  },
+  results(){
+    const s=ui.session;
+    return header(`<button class="link" data-act="new">New session</button>`)+`<div class="stack"><div><h2>${esc(s.playlist.name)}</h2></div>
+      <div class="fields"><label><b>Cull to</b><input id="rgoal" inputmode="numeric" value="${s.goal}"></label><label><b>Range</b><input id="rrange" inputmode="numeric" value="${s.range}"></label></div></div>
+      <div id="rbody"></div>`;
+  }
+};
+function resultBody(){
+  const s=ui.session,ev=evaluate(s),N=Object.keys(s.songs).length;
+  const cullAll=[...ev.cull,...ev.locked],under=ev.status==="under";
+  const sortRows=r=>r.slice().sort((a,b)=>a.round-b.round||b.pts-a.pts);
+  const keep=sortRows(ev.keep),cull=sortRows(cullAll);let rank=0;
+  const list=rows=>{let head="",h="";rows.forEach(r=>{
+      const g=(r.round?`Rematch ${r.round}, `:"")+plural(r.pts,"point");
+      if(g!==head){head=g;h+=`<div class="ghead">${esc(g)}</div>`}
+      const o=s.songs[r.key];rank++;
+      h+=`<div class="tr"><span class="n">${rank}</span>${art(o)}<div><b>${esc(o.n)}</b>${o.url?`<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.a)}</a>`:`<span class="by">${esc(o.a)}</span>`}</div></div>`});return h};
+  const cutHead=`<div class="cutline"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.2 8 21 19M8.2 16 21 5"/></svg>Cull box</div>`;
+  const t=ui.tab;
+  let listHtml="";
+  if(t!=="cull")listHtml+=list(keep);else rank=keep.length;
+  if(t!=="keep")listHtml+=cutHead+`<div class="cullzone">${list(cull)}</div>`;
+  const tab=(id,label)=>`<button role="tab" aria-selected="${t===id}" data-act="tab" data-tab="${id}">${label}</button>`;
+  const banner=under
+    ?`<p class="note err">Culling this box would leave ${plural(ev.remaining,"song")}, ${ev.short} under your goal. Run a rematch to rank these songs again.</p>
+      <button class="btn cut wide" data-act="rematch">Simulate cull box (${plural(ev.nextPool.length-1,"pick")})</button>`
+    :`<p class="note">${ev.remaining.toLocaleString()} songs remain, inside your ${s.goal.toLocaleString()} to ${(s.goal+s.range).toLocaleString()} target.</p>`;
+  return `<div class="counts"><div><b>${ev.remaining.toLocaleString()}</b><span class="muted">remaining</span></div><div class="c"><b>${cullAll.length.toLocaleString()}</b><span class="muted">in cull box</span></div></div>
+    ${strip(N,s.goal,s.range,ev.remaining)}<div class="stack" style="margin-top:16px">${banner}<p class="muted small">Nothing has been removed from Spotify.</p></div>
+    <div class="tabs" role="tablist">${tab("all","All songs")}${tab("keep","Remaining")}${tab("cull","Cull box")}</div>
+    <div class="row" style="margin-top:12px"><button class="link" data-act="copy">Copy this list</button><span id="copied" class="small muted" role="status" style="align-self:center"></span></div>
+    ${listHtml}`;
+}
+function render(){
+  ui.pair=[];
+  app.innerHTML=views[ui.view]();
+  if(!ui.pair.includes(player.key))stopPlayer();
+  if(!dock().hidden&&!player.key)showDock(false);
+  syncPlayButtons();
+  app.querySelectorAll("img").forEach(i=>i.addEventListener("error",()=>{i.style.visibility="hidden"},{once:true}));
+  if(ui.view==="configure"){updatePlan();["goal","range"].forEach(id=>document.getElementById(id).addEventListener("input",updatePlan))}
+  if(ui.view==="results"){document.getElementById("rbody").innerHTML=resultBody();
+    ["rgoal","rrange"].forEach(id=>document.getElementById(id).addEventListener("input",retarget));
+    bindImages()}
+  scrollTo(0,0);
+}
+function bindImages(){document.querySelectorAll("#rbody img").forEach(i=>i.addEventListener("error",()=>{i.style.visibility="hidden"},{once:true}))}
+function refreshResults(){document.getElementById("rbody").innerHTML=resultBody();bindImages()}
+const whole=v=>/^\d+$/.test(v.trim())?Number(v):NaN;
+function retarget(){
+  const s=ui.session,N=Object.keys(s.songs).length,g=whole(document.getElementById("rgoal").value),r=whole(document.getElementById("rrange").value);
+  if(!(g>=1&&g<N&&r>=0))return;
+  s.goal=g;s.range=r;saveProgress(s);refreshResults();
+}
+function updatePlan(){
+  const d=ui.draft,N=d.tracks.length,g=whole(document.getElementById("goal").value),r=whole(document.getElementById("range").value);
+  const plan=document.getElementById("plan"),start=document.getElementById("start");let ok=false,msg;
+  if(N<2)msg="This playlist needs at least 2 songs.";
+  else if(!(g>=1&&g<N))msg=`Enter a number from 1 to ${(N-1).toLocaleString()} for Cull to.`;
+  else if(!(r>=0))msg="Enter 0 or more for Range.";
+  else if(N<=g+r)msg=`This playlist already fits ${g.toLocaleString()} to ${(g+r).toLocaleString()} songs. Lower Cull to or Range.`;
+  else{ok=true;d.goal=g;d.range=r;msg=`You'll end with ${g.toLocaleString()} to ${(g+r).toLocaleString()} songs. The first tournament takes ${plural(N-1,"pick")}, and your progress saves as you go.`}
+  plan.textContent=msg;plan.classList.toggle("err",!ok);start.disabled=!ok;
+}
+function go(view){ui.view=view;render()}
+function routeSession(){ui.tab="all";go(evaluate(ui.session).status==="playing"?"match":"results")}
+async function loadPlaylists(){
+  ui.view="playlists";ui.error="";ui.loading="Loading your playlists";render();
+  try{
+    ui.me=await get("/me");
+    const raw=await allPages("/me/playlists?limit=50");
+    ui.playlists=raw.filter(Boolean).map(p=>{const c=p.items||p.tracks||{};return{id:p.id,name:p.name||"Untitled playlist",total:c.total||0,img:(p.images&&p.images.length&&p.images[p.images.length-1].url)||"",readable:(p.owner&&p.owner.id===ui.me.id)||!!p.collaborative}})
+      .sort((a,b)=>b.readable-a.readable);
+  }catch(e){ui.error=e.message;ui.playlists=[]}
+  ui.loading="";render();
+}
+async function choosePlaylist(p){
+  ui.error="";ui.loading="Loading "+p.name;render();
+  try{
+    const raw=await allPages(`/playlists/${encodeURIComponent(p.id)}/items?limit=50&additional_types=track,episode`,(n,t)=>{ui.loading=`Loading ${p.name}: ${n.toLocaleString()} of ${(t||n).toLocaleString()} songs`;render()});
+    const tracks=raw.map(parseEntry).filter(Boolean);
+    ui.loading="";ui.draft={playlist:{id:p.id,name:p.name},tracks,goal:Math.max(1,Math.round(tracks.length*.75)),range:15};go("configure");
+  }catch(e){ui.loading="";ui.error=e.message;render()}
+}
+function pick(side){
+  if(ui.busy)return;
+  const s=ui.session,ev=evaluate(s);if(ev.status!=="playing")return;
+  ui.busy=true;stopPlayer();
+  document.getElementById("side"+side).classList.add("won");
+  document.getElementById("side"+(1-side)).classList.add("lost");
+  const still=matchMedia("(prefers-reduced-motion:reduce)").matches;
+  setTimeout(()=>{ui.busy=false;s.rounds[ev.round].picks.push(side);saveProgress(s);routeSession()},still?0:170);
+}
+async function copyText(text){
+  try{await navigator.clipboard.writeText(text);return true}catch(e){
+    const t=document.createElement("textarea");t.value=text;document.body.append(t);t.select();let ok=false;try{ok=document.execCommand("copy")}catch(_){}t.remove();return ok}
+}
+const actions={
+  async home(){ui.error="";go("home")},
+  resume(){routeSession()},
+  connect(){ui.error="";if(signedIn())return loadPlaylists();if(store.get("client"))return login();go("setup")},
+  "save-client"(){const v=document.getElementById("client").value.trim();if(!/^[A-Za-z0-9]{16,}$/.test(v)){ui.error="Paste the Client ID from your Spotify app.";return render()}store.set("client",v);login()},
+  "copy-uri"(){copyText(redirectUri())},
+  demo(){ui.error="";ui.draft={playlist:{id:"demo",name:"Sample playlist",demo:true},tracks:demoTracks(),goal:16,range:2};go("configure")},
+  "load-playlists"(){loadPlaylists()},
+  "back-list"(){go("playlists")},
+  signout(){signOut();ui.playlists=[];go("home")},
+  choose(el){choosePlaylist(ui.playlists[Number(el.dataset.i)])},
+  start(){const d=ui.draft;clearSession();ui.session=makeSession(d.playlist,d.tracks,d.goal,d.range);saveSongs(ui.session);saveProgress(ui.session);routeSession()},
+  pick(el){pick(Number(el.dataset.side))},
+  undo(){const s=ui.session,ev=evaluate(s);if(s.rounds[ev.round].picks.pop()!==undefined){saveProgress(s);render()}},
+  auto(){const s=ui.session;let ev=evaluate(s);while(ev.status==="playing"){s.rounds[ev.round].picks.push(Math.random()<.5?0:1);ev=evaluate(s)}saveProgress(s);routeSession()},
+  play(el){togglePlay(el.dataset.key)},
+  tab(el){ui.tab=el.dataset.tab;refreshResults()},
+  rematch(){const s=ui.session;startRematch(s,evaluate(s),newSeed());saveProgress(s);routeSession()},
+  "new"(){clearSession();ui.session=null;ui.error="";go("home")},
+  async copy(){
+    const s=ui.session,ev=evaluate(s),line=r=>`${s.songs[r.key].n} - ${s.songs[r.key].a}`;
+    const sort=r=>r.slice().sort((a,b)=>a.round-b.round||b.pts-a.pts);
+    const keep=sort(ev.keep).map(line),cull=sort([...ev.cull,...ev.locked]).map(line);
+    const text=ui.tab==="keep"?keep.join("\n"):ui.tab==="cull"?cull.join("\n"):[...keep,"","Cull box:",...cull].join("\n");
+    const ok=await copyText(text);document.getElementById("copied").textContent=ok?"Copied":"Your browser blocked copying.";
+  }
+};
+app.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(el&&!el.disabled)actions[el.dataset.act](el)});
+addEventListener("keydown",e=>{
+  if(ui.view!=="match"||e.target.tagName==="INPUT"||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==="ArrowLeft"||e.key==="ArrowUp"||e.key==="1"){e.preventDefault();pick(0)}
+  else if(e.key==="ArrowRight"||e.key==="ArrowDown"||e.key==="2"){e.preventDefault();pick(1)}
+  else if(e.key==="u")actions.undo();
+});
+(async function boot(){
+  const returning=new URLSearchParams(location.search);
+  try{
+    await finishLogin();
+    if(returning.has("code"))return loadPlaylists();
+  }catch(e){ui.error=e.message}
+  render();
+})();
+</script>
+</body>
+</html>
